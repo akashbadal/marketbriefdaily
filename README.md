@@ -3,6 +3,16 @@
 Every morning the scheduled Cowork task writes a fresh `index.html` here plus a dated copy in
 `archive/`. A launchd job then commits and pushes, and GitHub Pages serves it at a stable URL.
 
+**Timing — the page is live before the 09:00 IST pre-open:**
+
+| Time (IST) | What happens |
+|---|---|
+| 08:24 | Briefing task fires (cron `20 8` + ~4 min scheduler jitter) |
+| 08:25–08:40 | Research runs, writes `index.html` + `archive/YYYY-MM-DD.html` |
+| 08:45 | `publish.sh` commits and pushes |
+| ~08:47 | GitHub Pages finishes building — **live** |
+| 08:55 / 09:30 / 10:30 | Retry slots; no-op if already published |
+
 ```
 market-briefing/
 ├── index.html          ← the live page (overwritten daily)
@@ -72,8 +82,7 @@ cp ~/Documents/market-briefing/com.akash.marketbriefing.publish.plist ~/Library/
 launchctl load ~/Library/LaunchAgents/com.akash.marketbriefing.publish.plist
 ```
 
-Done. It runs at 09:30 daily — about 25 minutes after the briefing task fires at 09:04, which
-leaves room for the research to finish.
+Done. It runs at 08:45 with retries at 08:55, 09:30 and 10:30 — see the timing table above.
 
 ---
 
@@ -100,8 +109,17 @@ yesterday's page up rather than replacing it with a blank one.
 was revoked. Run `git push` manually once from this folder to re-prompt, then it's fine again.
 
 **Job doesn't fire** — launchd skips runs when the Mac is asleep and doesn't retroactively catch
-up on `StartCalendarInterval`. If your machine is usually shut at 09:30, either change the Hour
-and Minute in the plist and reload it, or just run `publish.sh` by hand when you want to push.
+up on `StartCalendarInterval`. There are four fire times (08:45, 08:55, 09:30, 10:30) so a brief
+sleep is covered, but if the machine is shut all morning nothing publishes — run `publish.sh` by
+hand when you're back, or add more `<dict>` entries to the plist and reload it.
+
+To change the times: edit the plist, then
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.akash.marketbriefing.publish.plist
+cp ~/Documents/market-briefing/com.akash.marketbriefing.publish.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.akash.marketbriefing.publish.plist
+```
 
 **Page didn't change** — GitHub Pages can take a minute or two to rebuild. Check the Actions tab
 in the repo for the deploy status.
